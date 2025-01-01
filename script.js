@@ -1,9 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
     let entries = JSON.parse(localStorage.getItem('entries')) || [];
 
-    // Update the summary and chart
+    // Initial update
     updateSummary();
     updateChart();
+    displayEntries();
 
     // Handle form submission
     document.getElementById('finance-form').addEventListener('submit', (e) => {
@@ -15,15 +16,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const type = document.getElementById('type').value;
 
         const entry = { amount, category, date, type };
-
         entries.push(entry);
 
-        localStorage.setItem('entries', JSON.stringify(entries));
-
-        updateSummary();
-        updateChart();
-
+        saveAndRefresh();
         document.getElementById('finance-form').reset();
+    });
+
+    // Clear all entries
+    document.getElementById('clear-all').addEventListener('click', () => {
+        if (confirm('Are you sure you want to clear all entries?')) {
+            entries = [];
+            saveAndRefresh();
+        }
     });
 
     // Update the total income, expenses, and balance
@@ -41,9 +45,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const balance = totalIncome - totalExpenses;
 
-        document.getElementById('total-income').textContent = totalIncome;
-        document.getElementById('total-expenses').textContent = totalExpenses;
-        document.getElementById('balance').textContent = balance;
+        document.getElementById('total-income').textContent = totalIncome.toFixed(2);
+        document.getElementById('total-expenses').textContent = totalExpenses.toFixed(2);
+        document.getElementById('balance').textContent = balance.toFixed(2);
     }
 
     // Update the chart with income vs expenses data
@@ -52,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const expenses = entries.filter(entry => entry.type === 'expense').reduce((total, entry) => total + entry.amount, 0);
 
         const ctx = document.getElementById('finance-chart').getContext('2d');
-        const chart = new Chart(ctx, {
+        new Chart(ctx, {
             type: 'pie',
             data: {
                 labels: ['Income', 'Expenses'],
@@ -64,16 +68,48 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Display entries in a list (optional)
+    // Display entries in separate lists
     function displayEntries() {
-        const entryList = document.getElementById('entry-list');
-        entryList.innerHTML = '';
-        entries.forEach(entry => {
+        const incomeList = document.getElementById('income-list');
+        const expenseList = document.getElementById('expense-list');
+
+        incomeList.innerHTML = '';
+        expenseList.innerHTML = '';
+
+        entries.forEach((entry, index) => {
             const li = document.createElement('li');
-            li.textContent = `${entry.date} - ${entry.category} - ${entry.amount} (${entry.type})`;
-            entryList.appendChild(li);
+            li.textContent = `${entry.date} - ${entry.category} - ${entry.amount.toFixed(2)}`;
+            
+            // Add a delete button for each entry
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.style.marginLeft = '10px';
+            deleteBtn.addEventListener('click', () => {
+                deleteEntry(index);
+            });
+
+            li.appendChild(deleteBtn);
+
+            if (entry.type === 'income') {
+                incomeList.appendChild(li);
+            } else if (entry.type === 'expense') {
+                expenseList.appendChild(li);
+            }
         });
     }
 
-    displayEntries();
+    // Delete an entry by index
+    function deleteEntry(index) {
+        entries.splice(index, 1); // Remove the entry at the given index
+        saveAndRefresh();
+    }
+
+    // Save to localStorage and refresh the UI
+    function saveAndRefresh() {
+        localStorage.setItem('entries', JSON.stringify(entries));
+        updateSummary();
+        updateChart();
+        displayEntries();
+    }
 });
+
